@@ -41,9 +41,12 @@ class DashboardController extends Controller
             return redirect()->route('consultant.dashboard');
         }
 
-        // ✅ 5. ADD THIS: Academic Advisor Redirect
         if ($user->user_type === 'academic_advisor') {
             return redirect()->route('academic.dashboard');
+        }
+
+        if ($user->user_type === 'travel_agent') {
+            return redirect()->route('travel.dashboard');
         }
 
         // 5. Fallback for undefined roles

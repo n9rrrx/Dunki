@@ -180,6 +180,29 @@
                         <span class="side-menu__label">My Tasks</span>
                     </a>
                 </li>
+
+            @endif
+
+            {{-- 🌍 TRAVEL AGENT MENU (ADDED HERE) --}}
+            @if(auth()->user()->user_type === 'travel_agent')
+                <li class="menu-title">Logistics</li>
+
+                <li class="slide">
+                    <a href="{{ route('travel.dashboard') }}" class="side-menu__item">
+                        <span class="side_menu_icon"><i class="ri-plane-line"></i></span>
+                        <span class="side-menu__label">Travel Dashboard</span>
+                    </a>
+                </li>
+
+                <li class="slide">
+                    <a href="{{ route('applications.index') }}" class="side-menu__item">
+                        <span class="side_menu_icon"><i class="ri-file-list-3-line"></i></span>
+                        <span class="side-menu__label">Bookings List</span>
+                    </a>
+                </li>
+
+                {{-- ✅ TRAVEL AGENT CHAT BADGE --}}
+
             @endif
 
         </ul>
@@ -253,17 +276,17 @@
 
 @stack('scripts')
 
-{{-- ✅ GLOBAL REAL-TIME NOTIFICATION LISTENER --}}
+{{-- ✅ GLOBAL NOTIFICATION LISTENER --}}
 @auth
-    @vite(['resources/js/app.js'])
     <script type="module">
         document.addEventListener('DOMContentLoaded', function() {
             const currentUserId = {{ Auth::id() }};
 
-            // Select the badge based on role
+            // Select the badge based on role (Added Travel Agent support)
             const badgeStudent = document.getElementById('sidebar-badge-student');
             const badgeAdvisor = document.getElementById('sidebar-badge-advisor');
-            const activeBadge = badgeStudent || badgeAdvisor;
+            const badgeTravel = document.getElementById('sidebar-badge-travel');
+            const activeBadge = badgeStudent || badgeAdvisor || badgeTravel;
 
             // Check if we are currently ON the chat page
             const onChatPage = window.location.pathname.includes('/chat');
@@ -318,7 +341,7 @@
                                     // Update Text
                                     activeBadge.innerText = newCount > 9 ? '9+' : newCount;
 
-                                    // Force Visibility (CSS Class + Inline Style backup)
+                                    // Force Visibility
                                     activeBadge.classList.remove('d-none');
                                     activeBadge.style.display = 'inline-block';
 
@@ -328,8 +351,6 @@
                             });
                     }
                 }, 1000);
-            } else {
-                console.log("⚠️ No Sidebar Badge found on this page.");
             }
         });
     </script>

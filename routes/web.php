@@ -95,6 +95,20 @@ Route::middleware(['auth', 'role:academic_advisor'])->group(function () {
 });
 
 // ==========================================
+// 🌍 TRAVEL AGENT ROUTES
+// ==========================================
+Route::middleware(['auth', 'role:travel_agent'])->group(function () {
+
+    // 1. Dashboard (The Queue)
+    Route::get('/travel/dashboard', [\App\Http\Controllers\TravelController::class, 'index'])
+        ->name('travel.dashboard');
+
+    // 2. Start Booking Action
+    Route::post('/travel/start/{application}', [\App\Http\Controllers\TravelController::class, 'startBooking'])
+        ->name('travel.start');
+});
+
+// ==========================================
 // API ROUTES
 // ==========================================
 Route::get('/api/orders', [DashboardController::class, 'getOrders'])->middleware('auth');

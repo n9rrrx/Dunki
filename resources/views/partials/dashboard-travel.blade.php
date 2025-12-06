@@ -4,7 +4,7 @@
 
     <div class="row mb-4 align-items-end">
         <div class="col-md-8">
-            <h4 class="fw-bold text-dark">Travel & Logistics ✈️</h4>
+            <h4 class="fw-bold text-body">Travel & Logistics ✈️</h4>
             <p class="text-muted mb-0">Coordinate flights, accommodation, and airport pickups.</p>
         </div>
     </div>
@@ -35,16 +35,16 @@
                             <td>
                                 <div class="d-flex align-items-center">
                                     <div class="avatar-xs bg-success-subtle rounded-circle me-2 d-flex align-items-center justify-content-center">
-                                        <span class="fw-bold text-success">{{ substr($app->clientProfile->user->name, 0, 1) }}</span>
+                                        <span class="fw-bold text-primary">{{ substr($app->clientProfile->user->name, 0, 1) }}</span>
                                     </div>
                                     <div>
-                                        <h6 class="mb-0 fs-13 text-dark">{{ $app->clientProfile->user->name }}</h6>
+                                        <h6 class="mb-0 fs-13 text-body">{{ $app->clientProfile->user->name }}</h6>
                                         <small class="text-muted">{{ $app->clientProfile->user->email }}</small>
                                     </div>
                                 </div>
                             </td>
                             <td>
-                                <span class="badge bg-light text-dark border">
+                                <span class="badge bg-danger text-body border">
                                     <i class="ri-map-pin-line me-1"></i> {{ $app->destination_country }}
                                 </span>
                             </td>
@@ -52,7 +52,7 @@
                             <td class="text-end pe-4">
                                 <form action="{{ route('travel.start', $app->id) }}" method="POST">
                                     @csrf
-                                    <button type="submit" class="btn btn-sm btn-info text-white shadow-sm">
+                                    <button type="submit" class="btn btn-sm btn-primary text-white shadow-sm">
                                         Start Booking <i class="ri-plane-takeoff-line ms-1"></i>
                                     </button>
                                 </form>
