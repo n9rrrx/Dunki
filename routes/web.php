@@ -106,6 +106,8 @@ Route::middleware(['auth', 'role:travel_agent'])->group(function () {
     // 2. Start Booking Action
     Route::post('/travel/start/{application}', [\App\Http\Controllers\TravelController::class, 'startBooking'])
         ->name('travel.start');
+
+    Route::post('/travel/upload/{application}', [\App\Http\Controllers\TravelController::class, 'uploadTickets'])->name('travel.upload');
 });
 
 // ==========================================

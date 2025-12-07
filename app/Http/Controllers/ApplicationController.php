@@ -11,6 +11,9 @@ use Illuminate\Support\Str;
 
 class ApplicationController extends Controller
 {
+    /**
+     * Display a listing of applications.
+     */
     public function index()
     {
         $user = Auth::user();
@@ -32,6 +35,9 @@ class ApplicationController extends Controller
         return view('students.applications.index', compact('applications'));
     }
 
+    /**
+     * Display the application details.
+     */
     public function show(Application $application)
     {
         $user = Auth::user();
@@ -41,10 +47,11 @@ class ApplicationController extends Controller
             if ($application->clientProfile->user_id !== $user->id) abort(403);
         }
 
-        // 2. ADVISOR
+        // 2. ACADEMIC ADVISOR
         elseif ($user->user_type === 'academic_advisor') {
             if (in_array($application->status, ['approved', 'rejected'])) {
-                return redirect()->route('academic.dashboard')->with('info', "Already processed.");
+                return redirect()->route('academic.dashboard')
+                    ->with('info', "Application #{$application->application_number} is already processed.");
             }
         }
 
@@ -55,17 +62,17 @@ class ApplicationController extends Controller
             }
         }
 
-        // 4. ✅ TRAVEL AGENT
+        // 4. ✅ TRAVEL AGENT (Fixed: Added Missing Block)
         elseif ($user->user_type === 'travel_agent') {
-            // Only allow if Visa is Granted or Booking is in progress
+            // Only allow view if Visa is Granted or Booking Started
             if (!in_array($application->status, ['visa_granted', 'travel_booking', 'travel_booked'])) {
-                return back()->with('error', 'Visa not yet granted. Cannot book travel.');
+                return back()->with('error', 'Visa not granted yet. Cannot access travel details.');
             }
         }
 
-        // 5. ADMIN
+        // 5. ADMIN (Fallback)
         elseif ($user->user_type !== 'admin') {
-            abort(403);
+            abort(403); // Blocks HR or unknown roles
         }
 
         return view('students.applications.show', compact('application'));
@@ -75,7 +82,7 @@ class ApplicationController extends Controller
     {
         $user = Auth::user();
 
-        // ✅ Allow Travel Agent
+        // ✅ Allow Travel Agent in permission check
         if (!in_array($user->user_type, ['academic_advisor', 'admin', 'visa_consultant', 'travel_agent'])) {
             abort(403, 'Unauthorized action.');
         }
@@ -90,13 +97,13 @@ class ApplicationController extends Controller
             'notes'  => $request->reason,
         ]);
 
-        // Redirects
+        // ✅ Smart Redirects (Inbox Zero Workflow)
         if ($user->user_type === 'academic_advisor') {
             return redirect()->route('academic.dashboard')->with('success', 'Processed!');
         } elseif ($user->user_type === 'visa_consultant') {
             return redirect()->route('consultant.dashboard')->with('success', 'Visa updated!');
         } elseif ($user->user_type === 'travel_agent') {
-            return redirect()->route('travel.dashboard')->with('success', 'Travel booked!');
+            return redirect()->route('travel.dashboard')->with('success', 'Travel booked successfully!');
         }
 
         return back()->with('success', 'Status updated.');
@@ -111,17 +118,14 @@ class ApplicationController extends Controller
             return redirect()->route('profile.edit')->with('error', 'Complete profile first.');
         }
 
-        // Strict Document Check
+        // Document Check
         $uploadedFiles = \App\Models\File::where('uploaded_by', $user->id)
-            ->where('status', '!=', 'rejected')
-            ->pluck('file_type')->toArray();
-
+            ->where('status', '!=', 'rejected')->pluck('file_type')->toArray();
         $missing = array_diff(['passport', 'transcript', 'photo'], $uploadedFiles);
 
         if (!empty($missing)) {
             $list = implode(', ', array_map('ucfirst', $missing));
-            return redirect()->route('files.index')
-                ->with('error', "⚠️ Application Blocked! Missing: $list.");
+            return redirect()->route('files.index')->with('error', "⚠️ Missing: $list.");
         }
 
         $request->validate([
@@ -150,8 +154,7 @@ class ApplicationController extends Controller
             'submission_date'    => now(),
         ]);
 
-        return redirect()->route('student.dashboard')
-            ->with('success', 'Application submitted successfully!');
+        return redirect()->route('student.dashboard')->with('success', 'Application submitted successfully!');
     }
 
     public function create()
@@ -162,12 +165,7 @@ class ApplicationController extends Controller
     public function edit(Application $application)
     {
         if ($application->clientProfile->user_id !== auth()->id()) abort(403);
-
-        // Allow editing if rejected at EITHER stage (Academic or Visa)
-        if (!in_array($application->status, ['rejected', 'visa_rejected'])) {
-            return back();
-        }
-
+        if (!in_array($application->status, ['rejected', 'visa_rejected'])) return back();
         return view('students.applications.edit', compact('application'));
     }
 
@@ -175,15 +173,12 @@ class ApplicationController extends Controller
     {
         if ($application->clientProfile->user_id !== auth()->id()) abort(403);
 
-        $request->validate([
-            'course_name' => 'required|string',
-            'intake' => 'required|string',
-        ]);
+        $request->validate(['course_name' => 'required', 'intake' => 'required']);
 
         $application->update([
             'course_name' => $request->course_name,
             'intake'      => $request->intake,
-            'status'      => 'submitted', // Reset to start
+            'status'      => 'submitted',
             'notes'       => null
         ]);
 

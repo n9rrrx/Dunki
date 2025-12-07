@@ -7,16 +7,16 @@
         <div>
             @if(Auth::user()->user_type == 'academic_advisor')
                 <h4 class="fw-bold mb-1">Review Application <span class="badge bg-warning-subtle text-warning fs-12 align-middle border border-warning-subtle ms-2">Advisor Mode</span></h4>
-                <p class="text-muted mb-0">Applicant: <span class="fw-medium text-dark">{{ $application->clientProfile->user->name }}</span> • ID: #{{ $application->application_number }}</p>
+                <p class="text-muted mb-0">Applicant: <span class="fw-medium text-body">{{ $application->clientProfile->user->name }}</span> • ID: #{{ $application->application_number }}</p>
             @elseif(Auth::user()->user_type == 'visa_consultant')
                 <h4 class="fw-bold mb-1">Visa Filing <span class="badge bg-info-subtle text-info fs-12 align-middle border border-info-subtle ms-2">Consultant Mode</span></h4>
                 <p class="text-muted mb-0">Applicant: <span class="fw-medium text-dark">{{ $application->clientProfile->user->name }}</span> • ID: #{{ $application->application_number }}</p>
             @elseif(Auth::user()->user_type == 'travel_agent')
-                <h4 class="fw-bold mb-1">Travel Logistics <span class="badge bg-purple-subtle text-purple fs-12 align-middle border border-purple-subtle ms-2">Agent Mode</span></h4>
-                <p class="text-muted mb-0">Applicant: <span class="fw-medium text-body">{{ $application->clientProfile->user->name }}</span> • ID: #{{ $application->application_number }}</p>
+                <h4 class="fw-bold mb-1">Travel Logistics <span class="badge bg-purple-subtle text-purple fs-12 align-middle border border-purple-subtle text-body ms-2">Agent Mode</span></h4>
+                <p class="text-muted mb-0">Applicant: <span class="fw-medium text-dark">{{ $application->clientProfile->user->name }}</span> • ID: #{{ $application->application_number }}</p>
             @else
                 <h4 class="fw-bold mb-1">Application Details</h4>
-                <p class="text-muted mb-0">ID: <span class="fw-medium text-dark">#{{ $application->application_number }}</span></p>
+                <p class="text-muted mb-0">ID: <span class="fw-medium text-body">#{{ $application->application_number }}</span></p>
             @endif
         </div>
         <div>
@@ -36,6 +36,60 @@
     <div class="row">
         <!-- LEFT COLUMN -->
         <div class="col-lg-8">
+
+            {{-- ✈️ TRAVEL WALLET (Shows up when tickets are booked) --}}
+            @if($application->status == 'travel_booked')
+                <div class="card border-0 shadow-sm mb-4 border-top border-4 border-success">
+                    <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+                        <h6 class="card-title mb-0 fw-bold text-success">
+                            <i class="ri-plane-line me-1"></i> Travel Documents (Confirmed)
+                        </h6>
+                        <span class="badge bg-success">Ready to Fly</span>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table align-middle mb-0">
+                                <thead class="bg-light">
+                                <tr>
+                                    <th class="ps-4">Document</th>
+                                    <th>Type</th>
+                                    <th class="text-end pe-4">Download</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                {{-- Filter only Travel Docs --}}
+                                @php
+                                    $travelDocs = \App\Models\File::where('application_id', $application->id)
+                                        ->whereIn('file_type', ['flight_ticket', 'hotel_voucher', 'travel_insurance'])
+                                        ->get();
+                                @endphp
+
+                                @forelse($travelDocs as $doc)
+                                    <tr>
+                                        <td class="ps-4">
+                                            <div class="d-flex align-items-center">
+                                                <div class="avatar-sm bg-light rounded d-flex align-items-center justify-content-center me-2">
+                                                    <i class="ri-file-pdf-line fs-5 text-danger"></i>
+                                                </div>
+                                                <span class="fw-medium text-dark">{{ $doc->original_name }}</span>
+                                            </div>
+                                        </td>
+                                        <td><span class="badge bg-light text-dark border">{{ ucwords(str_replace('_', ' ', $doc->file_type)) }}</span></td>
+                                        <td class="text-end pe-4">
+                                            <a href="{{ asset('storage/' . $doc->file_path) }}" target="_blank" class="btn btn-sm btn-dark">
+                                                <i class="ri-download-line me-1"></i> Download
+                                            </a>
+                                        </td>
+                                    </tr>
+                                @empty
+                                    <tr><td colspan="3" class="text-center py-3">No tickets found.</td></tr>
+                                @endforelse
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            @endif
 
             {{-- STAFF VIEW: Applicant Info --}}
             @if(Auth::user()->user_type != 'student')
@@ -103,7 +157,7 @@
                         <i class="ri-file-list-3-line me-1"></i> Attached Documents
                     </h6>
                     @if(Auth::user()->user_type != 'student')
-                        <span class="badge bg-light text-body border">Verify these files</span>
+                        <span class="badge bg-light text-dark border">Verify these files</span>
                     @endif
                 </div>
                 <div class="card-body p-0">
@@ -155,8 +209,13 @@
             {{-- 🎓 ADVISOR ACTIONS --}}
             @if(Auth::user()->user_type == 'academic_advisor' && $application->status == 'submitted')
                 <div class="card border-0 shadow-sm mb-4 border-top border-4 border-info">
-                    <div class="card-header bg-white py-3"><h6 class="card-title mb-0 text-dark fw-bold">Decision Console</h6></div>
+                    <div class="card-header bg-white py-3">
+                        <h6 class="card-title mb-0 text-dark fw-bold">Decision Console</h6>
+                    </div>
                     <div class="card-body">
+                        <div class="alert alert-info fs-12 mb-3">
+                            <i class="ri-information-line me-1"></i> Please review all documents before making a decision.
+                        </div>
                         <div class="d-grid gap-2">
                             <form action="{{ route('applications.updateStatus', $application->id) }}" method="POST">
                                 @csrf
@@ -168,7 +227,7 @@
                                 <form action="{{ route('applications.updateStatus', $application->id) }}" method="POST">
                                     @csrf
                                     <input type="hidden" name="status" value="rejected">
-                                    <textarea name="reason" class="form-control mb-2" rows="3" placeholder="Reason..." required></textarea>
+                                    <textarea name="reason" class="form-control mb-2" rows="3" placeholder="Reason for rejection..." required></textarea>
                                     <button class="btn btn-danger btn-sm w-100">Confirm Rejection</button>
                                 </form>
                             </div>
@@ -179,30 +238,51 @@
 
             {{-- ✈️ VISA CONSULTANT ACTIONS --}}
             @if(Auth::user()->user_type == 'visa_consultant')
-                @if(!in_array($application->status, ['visa_granted', 'visa_rejected', 'travel_booking', 'travel_booked']))
+                @if(!in_array($application->status, ['visa_granted', 'visa_rejected']))
                     <div class="card border-0 shadow-sm mb-4 border-top border-4 border-dark">
-                        <div class="card-header bg-white py-3"><h6 class="card-title mb-0 text-dark fw-bold">Visa Filing Console</h6></div>
+                        <div class="card-header bg-white py-3">
+                            <h6 class="card-title mb-0 text-dark fw-bold">Visa Filing Console</h6>
+                        </div>
                         <div class="card-body">
+
                             @if($application->status == 'visa_processing')
+                                <div class="text-center mb-3">
+                                    <div class="avatar-sm bg-light rounded-circle mx-auto mb-2 d-flex align-items-center justify-content-center">
+                                        <i class="ri-file-paper-2-line fs-5 text-dark"></i>
+                                    </div>
+                                    <h6 class="fw-bold mb-1">Prepare Filing</h6>
+                                    <p class="small text-muted">Collect docs and submit to embassy.</p>
+                                </div>
                                 <form action="{{ route('applications.updateStatus', $application->id) }}" method="POST">
                                     @csrf
                                     <input type="hidden" name="status" value="visa_submitted">
                                     <button class="btn btn-dark w-100"><i class="ri-mail-send-line me-1"></i> Mark as Submitted</button>
                                 </form>
+
                             @elseif($application->status == 'visa_submitted')
+                                <div class="text-center mb-3">
+                                    <div class="avatar-sm bg-info-subtle rounded-circle mx-auto mb-2 d-flex align-items-center justify-content-center">
+                                        <i class="ri-time-line fs-5 text-info"></i>
+                                    </div>
+                                    <h6 class="fw-bold mb-1 text-info">Under Embassy Review</h6>
+                                    <p class="small text-muted">Waiting for final decision.</p>
+                                </div>
                                 <div class="d-grid gap-2">
                                     <form action="{{ route('applications.updateStatus', $application->id) }}" method="POST">
                                         @csrf
                                         <input type="hidden" name="status" value="visa_granted">
                                         <button class="btn btn-success w-100"><i class="ri-passport-line me-1"></i> Visa Granted</button>
                                     </form>
-                                    <button class="btn btn-outline-danger" type="button" data-bs-toggle="collapse" data-bs-target="#visaReject"><i class="ri-close-circle-line me-1"></i> Visa Rejected</button>
+
+                                    <button class="btn btn-outline-danger" type="button" data-bs-toggle="collapse" data-bs-target="#visaReject">
+                                        <i class="ri-close-circle-line me-1"></i> Visa Rejected</button>
+
                                     <div class="collapse" id="visaReject">
                                         <form action="{{ route('applications.updateStatus', $application->id) }}" method="POST" class="mt-2">
                                             @csrf
                                             <input type="hidden" name="status" value="visa_rejected">
-                                            <textarea name="reason" class="form-control mb-2" rows="2" placeholder="Reason..." required></textarea>
-                                            <button class="btn btn-danger btn-sm w-100">Confirm</button>
+                                            <textarea name="reason" class="form-control mb-2" rows="2" placeholder="Reason from Embassy..." required></textarea>
+                                            <button class="btn btn-danger btn-sm w-100">Confirm Rejection</button>
                                         </form>
                                     </div>
                                 </div>
@@ -212,25 +292,37 @@
                 @endif
             @endif
 
-            {{-- 🌍 TRAVEL AGENT ACTIONS --}}
+            {{-- 🌍 TRAVEL AGENT ACTIONS (Integrated) --}}
             @if(Auth::user()->user_type == 'travel_agent')
                 @if($application->status == 'travel_booking')
                     <div class="card border-0 shadow-sm mb-4 border-top border-4 border-purple">
-                        <div class="card-header bg-white py-3"><h6 class="card-title mb-0 text-dark fw-bold">Travel Booking</h6></div>
+                        <div class="card-header bg-white py-3">
+                            <h6 class="card-title mb-0 text-dark fw-bold">Booking Console</h6>
+                        </div>
                         <div class="card-body">
-                            <p class="text-muted small mb-3">Arrange flights and accommodation for the student.</p>
+                            <p class="text-muted small mb-3">Upload confirmed tickets to finalize this case.</p>
 
-                            <form action="{{ route('applications.updateStatus', $application->id) }}" method="POST">
+                            {{-- ✅ UPLOAD FORM --}}
+                            <form action="{{ route('travel.upload', $application->id) }}" method="POST" enctype="multipart/form-data">
                                 @csrf
-                                <input type="hidden" name="status" value="travel_booked">
 
                                 <div class="mb-3">
-                                    <label class="form-label small fw-bold text-uppercase">Flight Details / Note</label>
-                                    <textarea name="reason" class="form-control" rows="3" placeholder="e.g. Flight EK602 booked for 12th Aug..." required></textarea>
+                                    <label class="form-label small fw-bold">Flight Ticket (PDF)</label>
+                                    <input type="file" name="flight_ticket" class="form-control" accept="application/pdf" required>
                                 </div>
 
-                                <button class="btn w-100 text-white" style="background-color: #6f42c1;">
-                                    <i class="ri-plane-fill me-1"></i> Confirm Booking
+                                <div class="mb-3">
+                                    <label class="form-label small fw-bold">Hotel Voucher (Optional)</label>
+                                    <input type="file" name="hotel_voucher" class="form-control" accept="application/pdf">
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label small fw-bold">Note for Student</label>
+                                    <textarea name="notes" class="form-control" rows="2" placeholder="e.g. Flight EK602 confirmed."></textarea>
+                                </div>
+
+                                <button type="submit" class="btn btn-purple w-100 text-white" style="background-color: #6f42c1;">
+                                    <i class="ri-check-double-line me-1"></i> Confirm & Upload
                                 </button>
                             </form>
                         </div>
