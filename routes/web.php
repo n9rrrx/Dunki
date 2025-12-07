@@ -31,10 +31,14 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile/edit', [\App\Http\Controllers\StudentController::class, 'edit'])->name('profile.edit');
     Route::put('/profile/update', [\App\Http\Controllers\StudentController::class, 'update'])->name('profile.update');
 
+
     // Shared Application Routes
     Route::get('/applications', [ApplicationController::class, 'index'])->name('applications.index');
     Route::get('/applications/{application}', [ApplicationController::class, 'show'])->name('applications.show');
     Route::post('/applications/{application}/status', [ApplicationController::class, 'updateStatus'])->name('applications.updateStatus');
+    Route::post('/applications/{application}/travel-preferences', [\App\Http\Controllers\ApplicationController::class, 'submitTravelPreferences'])
+        ->name('applications.travelPreferences');
+
 
     // Chat Routes
     Route::get('/chat', [ChatController::class, 'index'])->name('chat.index');

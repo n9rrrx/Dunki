@@ -91,6 +91,59 @@
                 </div>
             @endif
 
+            {{-- ✈️ STUDENT: TRAVEL PREFERENCES FORM --}}
+            {{-- Shows up for Student when Visa is Granted --}}
+            @if(Auth::user()->user_type == 'student' && in_array($application->status, ['visa_granted', 'travel_booking']))
+
+                @php
+                    $prefs = $application->travel_preferences;
+                    if (is_string($prefs)) {
+                        $prefs = json_decode($prefs, true);
+                    }
+                @endphp
+
+                <div class="card border-0 shadow-sm mb-4 border-top border-4 border-purple">
+                    <div class="card-header bg-white py-3 border-bottom">
+                        <h6 class="card-title mb-0 fw-bold text-purple"><i class="ri-flight-takeoff-line me-1"></i> Travel Preferences</h6>
+                    </div>
+                    <div class="card-body p-4">
+                        @if($prefs)
+                            <div class="alert alert-purple bg-purple-subtle border-0 text-purple mb-0">
+                                <strong><i class="ri-check-double-line me-1"></i> Request Sent!</strong><br>
+                                You requested flight on <strong>{{ $prefs['date'] ?? 'N/A' }}</strong> from <strong>{{ $prefs['city'] ?? 'N/A' }}</strong>.
+                                <br><small>Agent Note: {{ $prefs['notes'] ?? 'None' }}</small>
+                            </div>
+                        @else
+                            <p class="text-muted small mb-3">
+                                Congratulations on your Visa! Please tell us when and how you would like to fly so we can book your ticket.
+                            </p>
+                            <form action="{{ route('applications.travelPreferences', $application->id) }}" method="POST">
+                                @csrf
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label small fw-bold text-uppercase">Preferred Date</label>
+                                        <input type="date" name="travel_date" class="form-control" required>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label small fw-bold text-uppercase">Departure City</label>
+                                        <input type="text" name="departure_city" class="form-control" placeholder="e.g. Lahore" required>
+                                    </div>
+                                    <div class="col-12">
+                                        <label class="form-label small fw-bold text-uppercase">Airline / Special Requests</label>
+                                        <textarea name="notes" class="form-control" rows="2" placeholder="e.g. Prefer Emirates, Vegetarian Meal..."></textarea>
+                                    </div>
+                                    <div class="col-12">
+                                        <button type="submit" class="btn btn-purple text-white w-100" style="background-color: #6f42c1;">
+                                            <i class="ri-send-plane-fill me-1"></i> Submit to Travel Agent
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+                        @endif
+                    </div>
+                </div>
+            @endif
+
             {{-- STAFF VIEW: Applicant Info --}}
             @if(Auth::user()->user_type != 'student')
                 <div class="card border-0 shadow-sm mb-4 border-top border-4 border-primary">
@@ -227,7 +280,7 @@
                                 <form action="{{ route('applications.updateStatus', $application->id) }}" method="POST">
                                     @csrf
                                     <input type="hidden" name="status" value="rejected">
-                                    <textarea name="reason" class="form-control mb-2" rows="3" placeholder="Reason for rejection..." required></textarea>
+                                    <textarea name="reason" class="form-control mb-2" rows="3" placeholder="Reason..." required></textarea>
                                     <button class="btn btn-danger btn-sm w-100">Confirm Rejection</button>
                                 </form>
                             </div>
@@ -240,9 +293,7 @@
             @if(Auth::user()->user_type == 'visa_consultant')
                 @if(!in_array($application->status, ['visa_granted', 'visa_rejected']))
                     <div class="card border-0 shadow-sm mb-4 border-top border-4 border-dark">
-                        <div class="card-header bg-white py-3">
-                            <h6 class="card-title mb-0 text-dark fw-bold">Visa Filing Console</h6>
-                        </div>
+                        <div class="card-header bg-white py-3"><h6 class="card-title mb-0 text-dark fw-bold">Visa Filing Console</h6></div>
                         <div class="card-body">
 
                             @if($application->status == 'visa_processing')
@@ -292,35 +343,54 @@
                 @endif
             @endif
 
-            {{-- 🌍 TRAVEL AGENT ACTIONS (Integrated) --}}
+            {{-- 🌍 TRAVEL AGENT ACTIONS --}}
             @if(Auth::user()->user_type == 'travel_agent')
                 @if($application->status == 'travel_booking')
                     <div class="card border-0 shadow-sm mb-4 border-top border-4 border-purple">
-                        <div class="card-header bg-white py-3">
-                            <h6 class="card-title mb-0 text-dark fw-bold">Booking Console</h6>
-                        </div>
+                        <div class="card-header bg-white py-3"><h6 class="card-title mb-0 text-dark fw-bold">Booking Console</h6></div>
                         <div class="card-body">
+
+                            {{-- ✅ SHOW STUDENT PREFERENCES HERE --}}
+                            @php
+                                $prefs = $application->travel_preferences;
+                                if (is_string($prefs)) {
+                                    $prefs = json_decode($prefs, true);
+                                }
+                            @endphp
+
+                            @if($prefs)
+                                <div class="alert alert-info bg-info-subtle border-0 text-info mb-3">
+                                    <h6 class="fw-bold mb-1"><i class="ri-user-voice-line me-1"></i> Student Requested:</h6>
+                                    <ul class="mb-0 ps-3 small">
+                                        <li><strong>Date:</strong> {{ $prefs['date'] ?? 'Any' }}</li>
+                                        <li><strong>City:</strong> {{ $prefs['city'] ?? 'Any' }}</li>
+                                        <li><strong>Airline:</strong> {{ $prefs['airline'] ?? 'Any' }}</li>
+                                        <li><strong>Notes:</strong> {{ $prefs['notes'] ?? 'None' }}</li>
+                                    </ul>
+                                </div>
+                            @else
+                                <div class="alert alert-warning small mb-3">
+                                    Student has not submitted specific preferences yet.
+                                </div>
+                            @endif
+
                             <p class="text-muted small mb-3">Upload confirmed tickets to finalize this case.</p>
 
-                            {{-- ✅ UPLOAD FORM --}}
+                            {{-- UPLOAD FORM --}}
                             <form action="{{ route('travel.upload', $application->id) }}" method="POST" enctype="multipart/form-data">
                                 @csrf
-
                                 <div class="mb-3">
                                     <label class="form-label small fw-bold">Flight Ticket (PDF)</label>
                                     <input type="file" name="flight_ticket" class="form-control" accept="application/pdf" required>
                                 </div>
-
                                 <div class="mb-3">
                                     <label class="form-label small fw-bold">Hotel Voucher (Optional)</label>
                                     <input type="file" name="hotel_voucher" class="form-control" accept="application/pdf">
                                 </div>
-
                                 <div class="mb-3">
                                     <label class="form-label small fw-bold">Note for Student</label>
                                     <textarea name="notes" class="form-control" rows="2" placeholder="e.g. Flight EK602 confirmed."></textarea>
                                 </div>
-
                                 <button type="submit" class="btn btn-purple w-100 text-white" style="background-color: #6f42c1;">
                                     <i class="ri-check-double-line me-1"></i> Confirm & Upload
                                 </button>
@@ -339,49 +409,28 @@
                     'visa_processing' => 'bg-dark text-white',
                     default => 'bg-primary text-white'
                 };
-
-                $iconClass = match($application->status) {
-                    'approved', 'visa_granted', 'travel_booked' => 'ri-check-double-line',
-                    'rejected', 'visa_rejected' => 'ri-close-circle-line',
-                    'visa_submitted', 'travel_booking' => 'ri-send-plane-fill',
-                    'visa_processing' => 'ri-file-settings-line',
-                    default => 'ri-loader-4-line spin'
-                };
             @endphp
 
             <div class="card border-0 shadow-sm mb-4 {{ $statusColor }}">
                 <div class="card-body p-4">
                     <h6 class="text-white-50 text-uppercase fs-11 fw-bold mb-2">Current Status</h6>
-                    <div class="d-flex align-items-center mb-3">
-                        <i class="{{ $iconClass }} fs-3 me-2"></i>
-                        <h2 class="text-white mb-0 fw-bold">{{ ucwords(str_replace('_', ' ', $application->status)) }}</h2>
-                    </div>
-
-                    @if($application->status == 'submitted')
-                        <p class="mb-0 small text-white-50">Pending Review. Waiting for advisor.</p>
-                    @elseif($application->status == 'approved')
-                        <p class="mb-0 small text-white-50">Approved! Moved to Visa Processing.</p>
-                    @elseif($application->status == 'visa_processing')
-                        <p class="mb-0 small text-white-50">Visa Consultant is preparing your file.</p>
-                    @elseif($application->status == 'visa_submitted')
-                        <p class="mb-0 small text-white-50">Application submitted to the Embassy.</p>
-                    @elseif($application->status == 'visa_granted')
-                        <p class="mb-0 small text-white-50">Congratulations! Visa Approved.</p>
-                    @elseif($application->status == 'travel_booking')
-                        <p class="mb-0 small text-white-50">Travel Agent is arranging logistics.</p>
-                    @elseif($application->status == 'travel_booked')
-                        <p class="mb-0 small text-white-50">Travel booked! Ready to fly.</p>
-
-                    @elseif(in_array($application->status, ['rejected', 'visa_rejected']))
-                        <p class="mb-0 small text-white-50">Application Returned. Please check the notes below.</p>
-
-                        @if(Auth::user()->user_type == 'student')
-                            <div class="mt-3 pt-3 border-top border-white-50">
-                                <a href="{{ route('applications.edit', $application->id) }}" class="btn btn-light btn-sm w-100 fw-bold text-danger shadow-sm">
-                                    <i class="ri-edit-2-line me-1"></i> Edit & Resubmit Application
-                                </a>
-                            </div>
+                    <h2 class="text-white mb-0 fw-bold">{{ ucwords(str_replace('_', ' ', $application->status)) }}</h2>
+                    <p class="mb-0 small text-white-50 mt-2">
+                        @if($application->status == 'travel_booking')
+                            Travel Agent is currently booking your tickets.
+                        @elseif($application->status == 'travel_booked')
+                            All Set! Travel arrangements have been confirmed.
+                        @else
+                            {{ $application->notes ?? 'Processing...' }}
                         @endif
+                    </p>
+
+                    @if(Auth::user()->user_type == 'student' && in_array($application->status, ['rejected', 'visa_rejected']))
+                        <div class="mt-3 pt-3 border-top border-white-50">
+                            <a href="{{ route('applications.edit', $application->id) }}" class="btn btn-light btn-sm w-100 fw-bold text-danger text-body shadow-sm">
+                                <i class="ri-edit-2-line me-1"></i> Edit & Resubmit Application
+                            </a>
+                        </div>
                     @endif
                 </div>
             </div>
@@ -398,10 +447,4 @@
 
         </div>
     </div>
-
-    <style>
-        .spin { animation: spin 2s linear infinite; }
-        @keyframes spin { 100% { transform: rotate(360deg); } }
-    </style>
-
 @endsection

@@ -47,7 +47,7 @@ class ApplicationController extends Controller
             if ($application->clientProfile->user_id !== $user->id) abort(403);
         }
 
-        // 2. ACADEMIC ADVISOR
+        // 2. ADVISOR
         elseif ($user->user_type === 'academic_advisor') {
             if (in_array($application->status, ['approved', 'rejected'])) {
                 return redirect()->route('academic.dashboard')
@@ -62,17 +62,17 @@ class ApplicationController extends Controller
             }
         }
 
-        // 4. ✅ TRAVEL AGENT (Fixed: Added Missing Block)
+        // 4. ✅ TRAVEL AGENT
         elseif ($user->user_type === 'travel_agent') {
-            // Only allow view if Visa is Granted or Booking Started
+            // Only allow if Visa is Granted or Booking is in progress
             if (!in_array($application->status, ['visa_granted', 'travel_booking', 'travel_booked'])) {
-                return back()->with('error', 'Visa not granted yet. Cannot access travel details.');
+                return back()->with('error', 'Visa not yet granted. Cannot book travel.');
             }
         }
 
-        // 5. ADMIN (Fallback)
+        // 5. ADMIN
         elseif ($user->user_type !== 'admin') {
-            abort(403); // Blocks HR or unknown roles
+            abort(403);
         }
 
         return view('students.applications.show', compact('application'));
@@ -118,9 +118,11 @@ class ApplicationController extends Controller
             return redirect()->route('profile.edit')->with('error', 'Complete profile first.');
         }
 
-        // Document Check
+        // Strict Document Check
         $uploadedFiles = \App\Models\File::where('uploaded_by', $user->id)
-            ->where('status', '!=', 'rejected')->pluck('file_type')->toArray();
+            ->where('status', '!=', 'rejected')
+            ->pluck('file_type')->toArray();
+
         $missing = array_diff(['passport', 'transcript', 'photo'], $uploadedFiles);
 
         if (!empty($missing)) {
@@ -184,5 +186,39 @@ class ApplicationController extends Controller
 
         return redirect()->route('applications.show', $application->id)
             ->with('success', 'Application resubmitted successfully!');
+    }
+
+    // ✅ NEW: Handle Student Travel Preferences (Force Save)
+    public function submitTravelPreferences(Request $request, Application $application)
+    {
+        $user = Auth::user();
+
+        // 1. Security: Only student can submit
+        if ($user->user_type !== 'student') abort(403);
+        if ($application->clientProfile->user_id !== $user->id) abort(403);
+
+        // 2. Validate
+        $request->validate([
+            'travel_date' => 'required|date|after:today',
+            'departure_city' => 'required|string|max:255',
+            'airline_preference' => 'nullable|string|max:255',
+            'notes' => 'nullable|string|max:1000',
+        ]);
+
+        // 3. Prepare Data
+        $data = [
+            'date' => $request->travel_date,
+            'city' => $request->departure_city,
+            'airline' => $request->airline_preference,
+            'notes' => $request->notes,
+            'submitted_at' => now()->toDateTimeString()
+        ];
+
+        // 4. Force Save (Using Property Assignment to bypass $fillable if needed)
+        // Ensure your Application model has 'protected $casts = ["travel_preferences" => "array"];'
+        $application->travel_preferences = $data;
+        $application->save();
+
+        return back()->with('success', 'Travel preferences sent to agent! They will contact you shortly.');
     }
 }
