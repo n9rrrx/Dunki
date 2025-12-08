@@ -71,10 +71,10 @@
                                                 <div class="avatar-sm bg-light rounded d-flex align-items-center justify-content-center me-2">
                                                     <i class="ri-file-pdf-line fs-5 text-danger"></i>
                                                 </div>
-                                                <span class="fw-medium text-dark">{{ $doc->original_name }}</span>
+                                                <span class="fw-medium text-body">{{ $doc->original_name }}</span>
                                             </div>
                                         </td>
-                                        <td><span class="badge bg-light text-dark border">{{ ucwords(str_replace('_', ' ', $doc->file_type)) }}</span></td>
+                                        <td><span class="badge bg-light text-body border">{{ ucwords(str_replace('_', ' ', $doc->file_type)) }}</span></td>
                                         <td class="text-end pe-4">
                                             <a href="{{ asset('storage/' . $doc->file_path) }}" target="_blank" class="btn btn-sm btn-dark">
                                                 <i class="ri-download-line me-1"></i> Download

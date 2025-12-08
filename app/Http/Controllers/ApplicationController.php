@@ -7,6 +7,8 @@ use App\Models\University;
 use App\Models\ClientProfile;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Mail; // 👈 Required for Emails
+use App\Mail\ApplicationStatusUpdate; // 👈 Required for Emails
 use Illuminate\Support\Str;
 
 class ApplicationController extends Controller
@@ -62,9 +64,8 @@ class ApplicationController extends Controller
             }
         }
 
-        // 4. ✅ TRAVEL AGENT
+        // 4. TRAVEL AGENT
         elseif ($user->user_type === 'travel_agent') {
-            // Only allow if Visa is Granted or Booking is in progress
             if (!in_array($application->status, ['visa_granted', 'travel_booking', 'travel_booked'])) {
                 return back()->with('error', 'Visa not yet granted. Cannot book travel.');
             }
@@ -82,7 +83,7 @@ class ApplicationController extends Controller
     {
         $user = Auth::user();
 
-        // ✅ Allow Travel Agent in permission check
+        // Allow Travel Agent & Others
         if (!in_array($user->user_type, ['academic_advisor', 'admin', 'visa_consultant', 'travel_agent'])) {
             abort(403, 'Unauthorized action.');
         }
@@ -97,13 +98,21 @@ class ApplicationController extends Controller
             'notes'  => $request->reason,
         ]);
 
-        // ✅ Smart Redirects (Inbox Zero Workflow)
+        // ✅ RESTORED: Send Email Notification
+        try {
+            $student = $application->clientProfile->user;
+            Mail::to($student->email)->send(new ApplicationStatusUpdate($application, $request->status));
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Mail Error: ' . $e->getMessage());
+        }
+
+        // Redirects
         if ($user->user_type === 'academic_advisor') {
-            return redirect()->route('academic.dashboard')->with('success', 'Processed!');
+            return redirect()->route('academic.dashboard')->with('success', 'Processed & Email Sent!');
         } elseif ($user->user_type === 'visa_consultant') {
-            return redirect()->route('consultant.dashboard')->with('success', 'Visa updated!');
+            return redirect()->route('consultant.dashboard')->with('success', 'Visa updated & Email Sent!');
         } elseif ($user->user_type === 'travel_agent') {
-            return redirect()->route('travel.dashboard')->with('success', 'Travel booked successfully!');
+            return redirect()->route('travel.dashboard')->with('success', 'Travel booked & Email Sent!');
         }
 
         return back()->with('success', 'Status updated.');
@@ -127,7 +136,7 @@ class ApplicationController extends Controller
 
         if (!empty($missing)) {
             $list = implode(', ', array_map('ucfirst', $missing));
-            return redirect()->route('files.index')->with('error', "⚠️ Missing: $list.");
+            return redirect()->route('files.index')->with('error', "⚠️ Application Blocked! Missing: $list.");
         }
 
         $request->validate([
@@ -188,16 +197,14 @@ class ApplicationController extends Controller
             ->with('success', 'Application resubmitted successfully!');
     }
 
-    // ✅ NEW: Handle Student Travel Preferences (Force Save)
+    // Handle Student Travel Preferences
     public function submitTravelPreferences(Request $request, Application $application)
     {
         $user = Auth::user();
 
-        // 1. Security: Only student can submit
         if ($user->user_type !== 'student') abort(403);
         if ($application->clientProfile->user_id !== $user->id) abort(403);
 
-        // 2. Validate
         $request->validate([
             'travel_date' => 'required|date|after:today',
             'departure_city' => 'required|string|max:255',
@@ -205,7 +212,6 @@ class ApplicationController extends Controller
             'notes' => 'nullable|string|max:1000',
         ]);
 
-        // 3. Prepare Data
         $data = [
             'date' => $request->travel_date,
             'city' => $request->departure_city,
@@ -214,8 +220,7 @@ class ApplicationController extends Controller
             'submitted_at' => now()->toDateTimeString()
         ];
 
-        // 4. Force Save (Using Property Assignment to bypass $fillable if needed)
-        // Ensure your Application model has 'protected $casts = ["travel_preferences" => "array"];'
+        // Force Save
         $application->travel_preferences = $data;
         $application->save();
 
