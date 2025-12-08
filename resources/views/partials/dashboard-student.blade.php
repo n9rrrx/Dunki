@@ -10,7 +10,7 @@
                         <div class="col-md-7">
                             <h4 class="mb-1 text-primary fw-bold">Welcome Back, {{ Auth::user()->name }}! 👋</h4>
                             <p class="text-muted mb-4">
-                                You are <span class="fw-bold text-dark">{{ $profileCompletion }}%</span> of the way there.
+                                You are <span class="fw-bold text-body">{{ $profileCompletion }}%</span> of the way there.
                                 Complete your profile to start applying to universities.
                             </p>
 
