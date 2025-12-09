@@ -10,7 +10,7 @@
                 <p class="text-muted mb-0">Applicant: <span class="fw-medium text-body">{{ $application->clientProfile->user->name }}</span> • ID: #{{ $application->application_number }}</p>
             @elseif(Auth::user()->user_type == 'visa_consultant')
                 <h4 class="fw-bold mb-1">Visa Filing <span class="badge bg-info-subtle text-info fs-12 align-middle border border-info-subtle ms-2">Consultant Mode</span></h4>
-                <p class="text-muted mb-0">Applicant: <span class="fw-medium text-dark">{{ $application->clientProfile->user->name }}</span> • ID: #{{ $application->application_number }}</p>
+                <p class="text-muted mb-0">Applicant: <span class="fw-medium text-body">{{ $application->clientProfile->user->name }}</span> • ID: #{{ $application->application_number }}</p>
             @elseif(Auth::user()->user_type == 'travel_agent')
                 <h4 class="fw-bold mb-1">Travel Logistics <span class="badge bg-purple-subtle text-purple fs-12 align-middle border border-purple-subtle text-body ms-2">Agent Mode</span></h4>
                 <p class="text-muted mb-0">Applicant: <span class="fw-medium text-dark">{{ $application->clientProfile->user->name }}</span> • ID: #{{ $application->application_number }}</p>

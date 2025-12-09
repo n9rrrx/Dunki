@@ -38,8 +38,7 @@
                             </div>
                             <div class="col-md-6">
                                 <label for="email" class="form-label fw-semibold">Email Address</label>
-                                <input type="email" class="form-control bg-light" id="email" name="email" value="{{ old('email', auth()->user()->email) }}" readonly>
-                                <div class="form-text">Email cannot be changed. Contact admin for help.</div>
+                                <input type="email" class="form-control bg-light" id="email" name="email" value="{{ old('email', auth()->user()->email) }}" required>
                                 @error('email') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
                             </div>
                         </div>

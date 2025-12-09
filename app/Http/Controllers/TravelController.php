@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Application;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Mail; // 👈 Import Mail
+use App\Mail\ApplicationStatusUpdate; // 👈 Import Mailable
 
 class TravelController extends Controller
 {
@@ -95,6 +97,14 @@ class TravelController extends Controller
             'status' => 'travel_booked',
             'notes'  => $request->notes ?? 'Travel documents uploaded.',
         ]);
+
+        // ✅ 4. SEND EMAIL NOTIFICATION (This was missing!)
+        try {
+            $student = $application->clientProfile->user;
+            Mail::to($student->email)->send(new ApplicationStatusUpdate($application, 'travel_booked'));
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Travel Mail Error: ' . $e->getMessage());
+        }
 
         return redirect()->route('travel.dashboard')->with('success', 'Tickets uploaded and booking confirmed!');
     }
