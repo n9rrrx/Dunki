@@ -50,6 +50,7 @@ class ApplicationStatusUpdate extends Mailable
     public function content(): Content
     {
         return new Content(
+        // ✅ We only need this line for Markdown emails
             markdown: 'emails.application.status',
         );
     }
