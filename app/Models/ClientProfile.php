@@ -2,29 +2,34 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class ClientProfile extends Model
 {
-    protected $fillable = [
-        'user_id', 'passport_no', 'date_of_birth', 'nationality', 'address',
-        'country_preference', 'education_level', 'english_proficiency',
-        'emergency_contact_name', 'emergency_contact_phone',
-    ];
+    use HasFactory;
 
-    // Relationships
+    protected $guarded = [];
+
+    // The Student User
     public function user()
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(User::class, 'user_id');
     }
 
-    public function applications()
+    // ✅ Staff Relationships
+    public function advisor()
     {
-        return $this->hasMany(Application::class, 'client_id');
+        return $this->belongsTo(User::class, 'advisor_id');
     }
 
-    public function files()
+    public function visaConsultant()
     {
-        return $this->hasMany(File::class, 'profile_id');
+        return $this->belongsTo(User::class, 'visa_consultant_id');
+    }
+
+    public function travelAgent()
+    {
+        return $this->belongsTo(User::class, 'travel_agent_id');
     }
 }
