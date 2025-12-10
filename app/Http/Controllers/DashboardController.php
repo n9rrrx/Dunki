@@ -131,72 +131,35 @@ class DashboardController extends Controller
     // ==========================================
     public function admin()
     {
-        // 1. General Counts
-        $totalStudents = ClientProfile::count(); // Use ClientProfile for students, or User::where('user_type','student')->count()
+        // 1. Counters
+        $totalStudents = ClientProfile::count();
         $totalApplications = Application::count();
         $totalVerifiedFiles = File::where('status', 'verified')->count();
         $totalCompletedTasks = Task::where('status', 'completed')->count();
-        $totalUsers = User::count(); // Total system users
+        $totalUsers = User::count();
 
-        // 2. Trends (Last 6 Months)
-        $applicationTrends = Application::select(
-            DB::raw('MONTH(created_at) as month'),
-            DB::raw('COUNT(*) as total')
-        )
-            ->where('created_at', '>=', now()->subMonths(6))
-            ->groupBy('month')->orderBy('month')->pluck('total', 'month')->toArray();
+        // 2. The Master List (Applications + Student + Assigned Staff)
+        $allApplications = Application::with([
+            'clientProfile.user',           // The Student
+            'clientProfile.advisor',        // The Advisor
+            'clientProfile.visaConsultant', // The Visa Guy
+            'clientProfile.travelAgent'     // The Travel Agent
+        ])->latest()->paginate(10);
 
-        $taskTrends = Task::select(
-            DB::raw('MONTH(created_at) as month'),
-            DB::raw('COUNT(*) as total')
-        )
-            ->where('created_at', '>=', now()->subMonths(6))
-            ->groupBy('month')->orderBy('month')->pluck('total', 'month')->toArray();
+        // 3. Lists for the "Assign Staff" Dropdown
+        $advisors = User::where('user_type', 'academic_advisor')->get();
+        $visaConsultants = User::where('user_type', 'visa_consultant')->get();
+        $travelAgents = User::where('user_type', 'travel_agent')->get();
 
-        // 3. Approval Rate
-        $totalFiles = File::count();
-        $approvalRate = $totalFiles > 0 ? round(($totalVerifiedFiles / $totalFiles) * 100, 1) : 0;
+        // (Keep your charts/trends logic if you want, or remove for simplicity)
+        // ...
 
-        // 4. Financials
-        $totalFees = 0;
-        $goalAmount = 20000;
-        if (Schema::hasColumn('applications', 'fee')) {
-            $totalFees = Application::sum('fee');
-        }
-        $progressPercent = $goalAmount > 0 ? round(($totalFees / $goalAmount) * 100, 1) : 0;
-
-        // 5. Recent Activity
-        $recentApplications = Application::latest()->take(5)->get();
-
-        // 6. Top Destinations
-        $topDestinations = collect();
-        if (Schema::hasColumn('applications', 'destination')) {
-            $topDestinations = Application::select('destination', DB::raw('COUNT(*) as total'))
-                ->groupBy('destination')
-                ->orderByDesc('total')
-                ->take(8)
-                ->get();
-        }
-
-        // Return the dedicated Admin View
-        // Note: Make sure 'partials.dashboard-admin' extends 'layouts.app' just like student view
         return view('partials.dashboard-admin', compact(
-            'totalUsers',
-            'totalStudents',
-            'totalApplications',
-            'totalVerifiedFiles',
-            'totalCompletedTasks',
-            'applicationTrends',
-            'taskTrends',
-            'approvalRate',
-            'totalFees',
-            'goalAmount',
-            'progressPercent',
-            'recentApplications',
-            'topDestinations'
+            'totalUsers', 'totalStudents', 'totalApplications',
+            'totalVerifiedFiles', 'totalCompletedTasks', 'allApplications',
+            'advisors', 'visaConsultants', 'travelAgents'
         ));
     }
-
     // ==========================================
     // 👔 HR DASHBOARD
     // ==========================================

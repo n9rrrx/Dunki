@@ -22,14 +22,35 @@ class ApplicationController extends Controller
 
         // 1. STUDENT
         if ($user->user_type === 'student') {
+            // ... existing student logic ...
             $clientProfile = ClientProfile::where('user_id', $user->id)->first();
             if (!$clientProfile) return redirect()->route('profile.edit');
             $applications = Application::where('client_id', $clientProfile->id)->latest()->paginate(10);
         }
-        // 2. STAFF (Advisor, Admin, Visa, Travel)
-        elseif (in_array($user->user_type, ['academic_advisor', 'admin', 'visa_consultant', 'travel_agent'])) {
+
+        // 2. STAFF (Advisor, Visa, Travel)
+        elseif (in_array($user->user_type, ['academic_advisor', 'visa_consultant', 'travel_agent'])) {
+
+            // ✅ STRICT FILTERING: Only show applications assigned to ME
+            $applications = Application::whereHas('clientProfile', function ($query) use ($user) {
+                if ($user->user_type === 'academic_advisor') {
+                    $query->where('advisor_id', $user->id);
+                } elseif ($user->user_type === 'visa_consultant') {
+                    $query->where('visa_consultant_id', $user->id);
+                } elseif ($user->user_type === 'travel_agent') {
+                    $query->where('travel_agent_id', $user->id);
+                }
+            })
+                ->with('clientProfile.user')
+                ->latest()
+                ->paginate(15);
+        }
+
+        // 3. ADMIN (Sees Everything)
+        elseif ($user->user_type === 'admin') {
             $applications = Application::with('clientProfile.user')->latest()->paginate(15);
         }
+
         else {
             abort(403, 'Access denied.');
         }

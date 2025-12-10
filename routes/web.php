@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\Admin\UniversityController;
 use App\Http\Controllers\VisaController; // ✅ Added Import
+use App\Http\Controllers\Admin\StaffController;
 
 // ==========================================
 // Default Home (Dashboard redirects by role)
@@ -84,11 +85,19 @@ Route::middleware(['auth', 'role:visa_consultant'])->group(function () {
 Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::get('/admin/dashboard', [DashboardController::class, 'admin'])->name('admin.dashboard');
     Route::resource('students', StudentController::class);
+    Route::post('/admin/assign-staff/{studentProfile}', [\App\Http\Controllers\Admin\StaffController::class, 'assignStaff'])
+        ->name('admin.assign_staff');
 
     Route::get('admin/universities/import', [UniversityController::class, 'import'])->name('admin.universities.import');
     Route::post('admin/universities/import', [UniversityController::class, 'importSearch'])->name('admin.universities.search');
     Route::post('admin/universities/store-api', [UniversityController::class, 'storeApi'])->name('admin.universities.storeApi');
     Route::resource('admin/universities', UniversityController::class)->names('admin.universities');
+    // ✅ STAFF MANAGEMENT
+    Route::resource('admin/staff', StaffController::class)->names('staff');
+
+    // ✅ FIX: Renamed parameter from {studentProfile} to {clientProfile} to match Model
+    Route::post('/admin/assign-staff/{clientProfile}', [StaffController::class, 'assignStaff'])
+        ->name('admin.assign_staff');
 });
 
 // ==========================================
