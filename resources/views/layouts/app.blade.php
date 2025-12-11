@@ -10,7 +10,10 @@
     <!-- Favicon -->
     <link rel="shortcut icon" href="{{ asset('assets/images/favicon.png') }}">
 
-    <!-- CSS -->
+    {{-- 🛑 VITE ENTRY POINT FOR CSS & JS (CORRECT WAY FOR ECHO/LIVE RELOAD) --}}
+    @vite(['resources/sass/app.scss', 'resources/js/app.js'])
+
+    <!-- CSS (Legacy/Libs - Keep for now) -->
     <link rel="stylesheet" href="https://cdn.datatables.net/1.11.5/css/dataTables.bootstrap5.min.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/select/1.6.0/css/select.dataTables.min.css">
     <link href="https://cdn.jsdelivr.net/npm/jquery-datatables-checkboxes@1.3.0/css/dataTables.checkboxes.min.css" rel="stylesheet">
@@ -19,7 +22,7 @@
     <script src="{{ asset('assets/js/layout/layout-default.js') }}"></script>
     <script src="{{ asset('assets/js/layout/layout.js') }}"></script>
 
-    <!-- App CSS -->
+    <!-- App CSS (Keep as fallbacks if not using custom SCSS) -->
     <link rel="stylesheet" href="{{ asset('assets/libs/choices.js/public/assets/styles/choices.min.css') }}">
     <link href="{{ asset('assets/libs/simplebar/simplebar.min.css') }}" rel="stylesheet">
     <link href="{{ asset('assets/css/icons.min.css') }}" rel="stylesheet" type="text/css">
@@ -289,8 +292,9 @@
 <script src="https://cdn.datatables.net/select/1.6.0/js/dataTables.select.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jquery-datatables-checkboxes@1.3.0/js/dataTables.checkboxes.min.js"></script>
 
-<!-- App JS -->
-<script type="module" src="{{ asset('assets/js/app.js') }}"></script>
+<!-- App JS (REMOVED REDUNDANT/FAULTY ASSET IMPORT) -->
+{{-- This line should be removed as @vite handles it --}}
+{{-- <script type="module" src="{{ asset('assets/js/app.js') }}"></script> --}}
 
 @stack('scripts')
 
@@ -328,6 +332,7 @@
                 console.log("✅ Sidebar Badge Listener Active for User:", currentUserId);
 
                 setTimeout(() => {
+                    // Check window.Echo availability after a slight delay
                     if(window.Echo) {
                         window.Echo.private(`chat.${currentUserId}`)
                             .listen('MessageSent', (e) => {
