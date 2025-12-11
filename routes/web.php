@@ -96,7 +96,7 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::resource('admin/staff', StaffController::class)->names('staff');
 
     // ✅ FIX: Renamed parameter from {studentProfile} to {clientProfile} to match Model
-    Route::post('/admin/assign-staff/{clientProfile}', [StaffController::class, 'assignStaff'])
+    Route::post('/admin/assign-staff/{clientProfileId}', [StaffController::class, 'assignStaff'])
         ->name('admin.assign_staff');
 });
 
