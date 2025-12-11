@@ -181,6 +181,13 @@
                     </a>
                 </li>
 
+                {{-- Added Chat Link for Visa Consultant as well (Optional but good) --}}
+                <li class="slide">
+                    <a href="{{ route('chat.index') }}" class="side-menu__item">
+                        <span class="side_menu_icon"><i class="ri-chat-1-line"></i></span>
+                        <span class="side-menu__label">Messages</span>
+                    </a>
+                </li>
             @endif
 
             {{-- 🌍 TRAVEL AGENT MENU (ADDED HERE) --}}
@@ -202,7 +209,18 @@
                 </li>
 
                 {{-- ✅ TRAVEL AGENT CHAT BADGE --}}
+                <li class="slide">
+                    <a href="{{ route('chat.index') }}" class="side-menu__item position-relative">
+                        <span class="side_menu_icon"><i class="ri-chat-smile-2-line"></i></span>
+                        <span class="side-menu__label">Messages</span>
 
+                        <span id="sidebar-badge-travel"
+                              class="position-absolute top-50 end-0 translate-middle-y badge rounded-pill bg-danger {{ ($globalUnreadCount ?? 0) > 0 ? '' : 'd-none' }}"
+                              style="margin-right: 15px;">
+                                {{ ($globalUnreadCount ?? 0) > 9 ? '9+' : ($globalUnreadCount ?? 0) }}
+                            </span>
+                    </a>
+                </li>
             @endif
 
         </ul>
@@ -286,13 +304,22 @@
             const badgeStudent = document.getElementById('sidebar-badge-student');
             const badgeAdvisor = document.getElementById('sidebar-badge-advisor');
             const badgeTravel = document.getElementById('sidebar-badge-travel');
-            const activeBadge = badgeStudent || badgeAdvisor || badgeTravel;
-
-            // Check if we are currently ON the chat page
             const onChatPage = window.location.pathname.includes('/chat');
+
+            let activeBadge = null;
+            @if(Auth::user()->user_type === 'student')
+                activeBadge = badgeStudent;
+            @elseif(Auth::user()->user_type === 'academic_advisor')
+                activeBadge = badgeAdvisor;
+            @elseif(Auth::user()->user_type === 'travel_agent')
+                activeBadge = badgeTravel;
+            // Note: Visa consultant badge support should be added if needed
+            @endif
+
 
             // 1. Initial State: If on chat page, hide badge immediately
             if (onChatPage && activeBadge) {
+                // This is handled by the chat view itself, but good safety check
                 activeBadge.innerText = '0';
                 activeBadge.classList.add('d-none');
             }
