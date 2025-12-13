@@ -126,7 +126,7 @@
                 </li>
 
                 <li class="slide">
-                    <a href="#!" class="side-menu__item">
+                    <a href="{{ route('applications.index') }}" class="side-menu__item">
                         <span class="side_menu_icon"><i class="ri-file-settings-line"></i></span>
                         <span class="side-menu__label">All Applications</span>
                     </a>

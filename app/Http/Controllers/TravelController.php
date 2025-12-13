@@ -3,49 +3,62 @@
 namespace App\Http\Controllers;
 
 use App\Models\Application;
+use App\Models\File;
+use App\Models\Task; // 🛑 Import Task Model
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Mail; // 👈 Import Mail
-use App\Mail\ApplicationStatusUpdate; // 👈 Import Mailable
+use Illuminate\Support\Facades\Mail;
+use App\Mail\ApplicationStatusUpdate;
 
 class TravelController extends Controller
 {
     public function index()
     {
-        // 1. Fetch Students Ready for Travel (Visa Granted)
+        $user = Auth::user();
+
+        // 1. Ready for Travel: Visa Granted AND Assigned to Me
         $readyForTravel = Application::with('clientProfile.user')
             ->where('status', 'visa_granted')
+            ->whereHas('clientProfile', function ($q) use ($user) {
+                $q->where('travel_agent_id', $user->id);
+            })
             ->latest()
             ->get();
 
-        // 2. Fetch Students currently being booked
+        // 2. In Progress: Assigned to Me
         $bookingInProgress = Application::with('clientProfile.user')
             ->whereIn('status', ['travel_booking', 'travel_booked'])
+            ->whereHas('clientProfile', function ($q) use ($user) {
+                $q->where('travel_agent_id', $user->id);
+            })
             ->latest()
             ->get();
 
         return view('partials.dashboard-travel', compact('readyForTravel', 'bookingInProgress'));
     }
 
-    /**
-     * Start the Booking Process
-     */
     public function startBooking(Request $request, Application $application)
     {
-        // Update status to show travel work has started
+        // Strict Assignment Check
+        if ($application->clientProfile->travel_agent_id !== Auth::id()) {
+            abort(403, 'You are not assigned to this travel case.');
+        }
+
         $application->update([
             'status' => 'travel_booking',
             'notes' => 'Travel booking started by ' . Auth::user()->name
         ]);
 
-        return back()->with('success', 'Travel file opened for ' . $application->clientProfile->user->name);
+        return back()->with('success', 'Booking started.');
     }
 
-    /**
-     * Upload Tickets and Confirm Booking
-     */
     public function uploadTickets(Request $request, Application $application)
     {
+        // Strict Assignment Check
+        if ($application->clientProfile->travel_agent_id !== Auth::id()) {
+            abort(403, 'You are not assigned to this travel case.');
+        }
+
         $request->validate([
             'flight_ticket' => 'required|file|mimes:pdf,jpg,png|max:5120',
             'hotel_voucher' => 'nullable|file|mimes:pdf,jpg,png|max:5120',
@@ -54,13 +67,14 @@ class TravelController extends Controller
 
         $user = Auth::user();
 
+        // 1. Upload Files (Flight & Hotel)
         // 1. Upload Flight Ticket
         if ($request->hasFile('flight_ticket')) {
             $file = $request->file('flight_ticket');
             $path = $file->store('travel_docs', 'public');
 
-            \App\Models\File::create([
-                'profile_id'    => $application->clientProfile->id, // Link to student profile
+            File::create([
+                'profile_id'    => $application->clientProfile->id,
                 'application_id'=> $application->id,
                 'file_type'     => 'flight_ticket',
                 'file_name'     => 'Flight_Ticket_' . $application->application_number,
@@ -69,16 +83,16 @@ class TravelController extends Controller
                 'file_size'     => $file->getSize(),
                 'mime_type'     => $file->getMimeType(),
                 'uploaded_by'   => $user->id,
-                'status'        => 'verified' // Auto-verify since Agent uploaded it
+                'status'        => 'verified'
             ]);
         }
 
-        // 2. Upload Hotel Voucher (Optional)
+        // 2. Upload Hotel Voucher
         if ($request->hasFile('hotel_voucher')) {
             $file = $request->file('hotel_voucher');
             $path = $file->store('travel_docs', 'public');
 
-            \App\Models\File::create([
+            File::create([
                 'profile_id'    => $application->clientProfile->id,
                 'application_id'=> $application->id,
                 'file_type'     => 'hotel_voucher',
@@ -92,20 +106,28 @@ class TravelController extends Controller
             ]);
         }
 
-        // 3. Update Status
+
+        // 3. ✅ FIX: MARK RELATED TASK AS COMPLETED
+        Task::where('related_application_id', $application->id)
+            ->where('assigned_to', $user->id)
+            ->where('status', '!=', 'completed')
+            ->update(['status' => 'completed']);
+
+        // 4. Update Application Status
         $application->update([
             'status' => 'travel_booked',
             'notes'  => $request->notes ?? 'Travel documents uploaded.',
         ]);
 
-        // ✅ 4. SEND EMAIL NOTIFICATION (This was missing!)
+        // 5. Send Email Notification
         try {
             $student = $application->clientProfile->user;
             Mail::to($student->email)->send(new ApplicationStatusUpdate($application, 'travel_booked'));
         } catch (\Exception $e) {
+            // Log error but don't break flow
             \Illuminate\Support\Facades\Log::error('Travel Mail Error: ' . $e->getMessage());
         }
 
-        return redirect()->route('travel.dashboard')->with('success', 'Tickets uploaded and booking confirmed!');
+        return redirect()->route('travel.dashboard')->with('success', 'Tickets uploaded and Student Notified!');
     }
 }

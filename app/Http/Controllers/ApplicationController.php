@@ -5,52 +5,52 @@ namespace App\Http\Controllers;
 use App\Models\Application;
 use App\Models\University;
 use App\Models\ClientProfile;
+use App\Models\Task; // Task model must be imported
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Mail; // 👈 Required for Emails
-use App\Mail\ApplicationStatusUpdate; // 👈 Required for Emails
+use Illuminate\Support\Facades\Mail;
+use App\Mail\ApplicationStatusUpdate;
 use Illuminate\Support\Str;
 
 class ApplicationController extends Controller
 {
-    /**
-     * Display a listing of applications.
-     */
     public function index()
     {
         $user = Auth::user();
 
-        // 1. STUDENT
         if ($user->user_type === 'student') {
-            // ... existing student logic ...
             $clientProfile = ClientProfile::where('user_id', $user->id)->first();
             if (!$clientProfile) return redirect()->route('profile.edit');
             $applications = Application::where('client_id', $clientProfile->id)->latest()->paginate(10);
         }
+        elseif (in_array($user->user_type, ['academic_advisor', 'admin', 'visa_consultant', 'travel_agent'])) {
 
-        // 2. STAFF (Advisor, Visa, Travel)
-        elseif (in_array($user->user_type, ['academic_advisor', 'visa_consultant', 'travel_agent'])) {
+            // ✅ FIX: Correct Eager Loading using dot notation for staff relations
+            $applicationsQuery = Application::whereHas('clientProfile', function ($query) use ($user) {
+                if ($user->user_type === 'academic_advisor') $query->where('advisor_id', $user->id);
+                if ($user->user_type === 'visa_consultant') $query->where('visa_consultant_id', $user->id);
+                if ($user->user_type === 'travel_agent') $query->where('travel_agent_id', $user->id);
+            });
 
-            // ✅ STRICT FILTERING: Only show applications assigned to ME
-            $applications = Application::whereHas('clientProfile', function ($query) use ($user) {
-                if ($user->user_type === 'academic_advisor') {
-                    $query->where('advisor_id', $user->id);
-                } elseif ($user->user_type === 'visa_consultant') {
-                    $query->where('visa_consultant_id', $user->id);
-                } elseif ($user->user_type === 'travel_agent') {
-                    $query->where('travel_agent_id', $user->id);
-                }
-            })
-                ->with('clientProfile.user')
+            $applications = $applicationsQuery->with([
+                'clientProfile.user',
+                'clientProfile.advisor',
+                'clientProfile.visaConsultant',
+                'clientProfile.travelAgent'
+            ])
                 ->latest()
                 ->paginate(15);
-        }
 
-        // 3. ADMIN (Sees Everything)
-        elseif ($user->user_type === 'admin') {
-            $applications = Application::with('clientProfile.user')->latest()->paginate(15);
+            // Admin Override (Sees EVERYTHING)
+            if ($user->user_type === 'admin') {
+                $applications = Application::with([
+                    'clientProfile.user',
+                    'clientProfile.advisor',
+                    'clientProfile.visaConsultant',
+                    'clientProfile.travelAgent'
+                ])->latest()->paginate(15);
+            }
         }
-
         else {
             abort(403, 'Access denied.');
         }
@@ -58,9 +58,6 @@ class ApplicationController extends Controller
         return view('students.applications.index', compact('applications'));
     }
 
-    /**
-     * Display the application details.
-     */
     public function show(Application $application)
     {
         $user = Auth::user();
@@ -69,30 +66,28 @@ class ApplicationController extends Controller
         if ($user->user_type === 'student') {
             if ($application->clientProfile->user_id !== $user->id) abort(403);
         }
+        // 2. STAFF (Strict Assignment Check)
+        elseif (in_array($user->user_type, ['academic_advisor', 'visa_consultant', 'travel_agent'])) {
+            $profile = $application->clientProfile;
+            $isAssigned = false;
 
-        // 2. ADVISOR
-        elseif ($user->user_type === 'academic_advisor') {
-            if (in_array($application->status, ['approved', 'rejected'])) {
-                return redirect()->route('academic.dashboard')
-                    ->with('info', "Application #{$application->application_number} is already processed.");
-            }
-        }
+            if ($user->user_type === 'academic_advisor' && $profile->advisor_id === $user->id) $isAssigned = true;
+            if ($user->user_type === 'visa_consultant' && $profile->visa_consultant_id === $user->id) $isAssigned = true;
+            if ($user->user_type === 'travel_agent' && $profile->travel_agent_id === $user->id) $isAssigned = true;
 
-        // 3. VISA CONSULTANT
-        elseif ($user->user_type === 'visa_consultant') {
-            if (in_array($application->status, ['draft', 'submitted', 'under_review', 'rejected'])) {
+            if (!$isAssigned && $user->user_type !== 'admin') return back()->with('error', 'You are not assigned to this student.');
+
+            // Status Logic
+            if ($user->user_type === 'academic_advisor' && in_array($application->status, ['approved', 'rejected']))
+                return redirect()->route('academic.dashboard')->with('info', "Already processed.");
+
+            if ($user->user_type === 'visa_consultant' && !in_array($application->status, ['approved', 'visa_processing', 'visa_submitted', 'visa_granted', 'visa_rejected']))
                 return back()->with('error', 'Not ready for visa processing.');
-            }
-        }
 
-        // 4. TRAVEL AGENT
-        elseif ($user->user_type === 'travel_agent') {
-            if (!in_array($application->status, ['visa_granted', 'travel_booking', 'travel_booked'])) {
-                return back()->with('error', 'Visa not yet granted. Cannot book travel.');
-            }
+            if ($user->user_type === 'travel_agent' && !in_array($application->status, ['visa_granted', 'travel_booking', 'travel_booked']))
+                return back()->with('error', 'Visa not yet granted.');
         }
-
-        // 5. ADMIN
+        // 3. ADMIN
         elseif ($user->user_type !== 'admin') {
             abort(403);
         }
@@ -103,38 +98,49 @@ class ApplicationController extends Controller
     public function updateStatus(Request $request, Application $application)
     {
         $user = Auth::user();
+        if (!in_array($user->user_type, ['academic_advisor', 'admin', 'visa_consultant', 'travel_agent'])) abort(403);
 
-        // Allow Travel Agent & Others
-        if (!in_array($user->user_type, ['academic_advisor', 'admin', 'visa_consultant', 'travel_agent'])) {
-            abort(403, 'Unauthorized action.');
-        }
-
-        $request->validate([
-            'status' => 'required|string',
-            'reason' => 'nullable|string|max:500',
-        ]);
+        $request->validate(['status' => 'required', 'reason' => 'nullable|max:500']);
 
         $application->update([
             'status' => $request->status,
             'notes'  => $request->reason,
         ]);
 
-        // ✅ RESTORED: Send Email Notification
-        try {
-            $student = $application->clientProfile->user;
-            Mail::to($student->email)->send(new ApplicationStatusUpdate($application, $request->status));
-        } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error('Mail Error: ' . $e->getMessage());
-        }
+        // 🛑 CRITICAL FIX: Generate Task on Visa Grant
+        if ($request->status === 'visa_granted') {
+            $travelAgentId = $application->clientProfile->travel_agent_id;
 
-        // Redirects
-        if ($user->user_type === 'academic_advisor') {
-            return redirect()->route('academic.dashboard')->with('success', 'Processed & Email Sent!');
-        } elseif ($user->user_type === 'visa_consultant') {
-            return redirect()->route('consultant.dashboard')->with('success', 'Visa updated & Email Sent!');
-        } elseif ($user->user_type === 'travel_agent') {
-            return redirect()->route('travel.dashboard')->with('success', 'Travel booked & Email Sent!');
+            // Only create task if an agent is assigned
+            if ($travelAgentId) {
+
+                // ✅ FIX: Check if a PENDING task already exists to prevent duplication on status reset
+                $existingTask = Task::where('related_application_id', $application->id)
+                    ->where('assigned_to', $travelAgentId)
+                    ->where('status', '!=', 'completed')
+                    ->first();
+
+                if (!$existingTask) {
+                    Task::create([
+                        'title' => 'Book Travel Tickets for ' . $application->clientProfile->user->name,
+                        'description' => 'The visa has been granted. Coordinate with the student to finalize travel preferences and book flights/accommodation.',
+                        'assigned_to' => $travelAgentId,
+                        'status' => 'pending',
+                        'related_application_id' => $application->id,
+                        'assigned_by' => Auth::id(),
+                    ]);
+                }
+            }
         }
+        // END CRITICAL FIX 🛑
+
+        try {
+            Mail::to($application->clientProfile->user->email)->send(new ApplicationStatusUpdate($application, $request->status));
+        } catch (\Exception $e) {}
+
+        if ($user->user_type === 'academic_advisor') return redirect()->route('academic.dashboard')->with('success', 'Processed!');
+        if ($user->user_type === 'visa_consultant') return redirect()->route('consultant.dashboard')->with('success', 'Visa updated!');
+        if ($user->user_type === 'travel_agent') return redirect()->route('travel.dashboard')->with('success', 'Travel booked!');
 
         return back()->with('success', 'Status updated.');
     }
@@ -218,7 +224,6 @@ class ApplicationController extends Controller
             ->with('success', 'Application resubmitted successfully!');
     }
 
-    // Handle Student Travel Preferences
     public function submitTravelPreferences(Request $request, Application $application)
     {
         $user = Auth::user();
@@ -241,7 +246,6 @@ class ApplicationController extends Controller
             'submitted_at' => now()->toDateTimeString()
         ];
 
-        // Force Save
         $application->travel_preferences = $data;
         $application->save();
 
