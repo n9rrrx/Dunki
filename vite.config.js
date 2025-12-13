@@ -11,6 +11,15 @@ export default defineConfig({
             refresh: true,
         }),
     ],
+    css: {
+        preprocessorOptions: {
+            scss: {
+                api: 'modern-compiler',
+                // Removed 'mixed-decls' from this list
+                silenceDeprecations: ['color-functions', 'global-builtin', 'import', 'legacy-js-api'],
+            },
+        },
+    },
     server: {
         host: '127.0.0.1',
         port: 5173,

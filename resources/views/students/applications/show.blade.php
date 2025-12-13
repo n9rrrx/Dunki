@@ -7,13 +7,13 @@
         <div>
             @if(Auth::user()->user_type == 'academic_advisor')
                 <h4 class="fw-bold mb-1">Review Application <span class="badge bg-warning-subtle text-warning fs-12 align-middle border border-warning-subtle ms-2">Advisor Mode</span></h4>
-                <p class="text-muted mb-0">Applicant: <span class="fw-medium text-body">{{ $application->clientProfile->user->name }}</span> • ID: #{{ $application->application_number }}</p>
+                <p class="text-muted mb-0">Applicant: <span class="fw-medium text-body">{{ $application->clientProfile->user->name ?? 'N/A' }}</span> • ID: #{{ $application->application_number }}</p>
             @elseif(Auth::user()->user_type == 'visa_consultant')
                 <h4 class="fw-bold mb-1">Visa Filing <span class="badge bg-info-subtle text-info fs-12 align-middle border border-info-subtle ms-2">Consultant Mode</span></h4>
-                <p class="text-muted mb-0">Applicant: <span class="fw-medium text-body">{{ $application->clientProfile->user->name }}</span> • ID: #{{ $application->application_number }}</p>
+                <p class="text-muted mb-0">Applicant: <span class="fw-medium text-body">{{ $application->clientProfile->user->name ?? 'N/A' }}</span> • ID: #{{ $application->application_number }}</p>
             @elseif(Auth::user()->user_type == 'travel_agent')
                 <h4 class="fw-bold mb-1">Travel Logistics <span class="badge bg-purple-subtle text-purple fs-12 align-middle border border-purple-subtle text-body ms-2">Agent Mode</span></h4>
-                <p class="text-muted mb-0">Applicant: <span class="fw-medium text-dark">{{ $application->clientProfile->user->name }}</span> • ID: #{{ $application->application_number }}</p>
+                <p class="text-muted mb-0">Applicant: <span class="fw-medium text-dark">{{ $application->clientProfile->user->name ?? 'N/A' }}</span> • ID: #{{ $application->application_number }}</p>
             @else
                 <h4 class="fw-bold mb-1">Application Details</h4>
                 <p class="text-muted mb-0">ID: <span class="fw-medium text-body">#{{ $application->application_number }}</span></p>
@@ -110,8 +110,12 @@
                         @if($prefs)
                             <div class="alert alert-purple bg-purple-subtle border-0 text-purple mb-0">
                                 <strong><i class="ri-check-double-line me-1"></i> Request Sent!</strong><br>
-                                You requested flight on <strong>{{ $prefs['date'] ?? 'N/A' }}</strong> from <strong>{{ $prefs['city'] ?? 'N/A' }}</strong>.
-                                <br><small>Agent Note: {{ $prefs['notes'] ?? 'None' }}</small>
+                                <ul class="mb-0 ps-3 small">
+                                    <li><strong>Preferred Date:</strong> {{ $prefs['date'] ?? 'N/A' }}</li>
+                                    <li><strong>From:</strong> {{ $prefs['city'] ?? 'N/A' }}</li>
+                                    <li><strong>Airline:</strong> {{ !empty($prefs['airline']) ? $prefs['airline'] : 'Any Airline' }}</li>
+                                    <li><strong>Notes:</strong> {{ $prefs['notes'] ?? 'None' }}</li>
+                                </ul>
                             </div>
                         @else
                             <p class="text-muted small mb-3">
@@ -259,6 +263,42 @@
         <!-- RIGHT COLUMN -->
         <div class="col-lg-4">
 
+            {{-- 🛡️ ADMIN STATUS OVERRIDE CONSOLE --}}
+            @if(Auth::user()->user_type == 'admin')
+                <div class="card border-0 shadow-sm mb-4 border-top border-4 border-danger">
+                    <div class="card-header bg-white py-3">
+                        <h6 class="card-title mb-0 text-danger fw-bold">Admin Status Override</h6>
+                    </div>
+                    <div class="card-body">
+                        <form action="{{ route('applications.updateStatus', $application->id) }}" method="POST">
+                            @csrf
+                            <div class="mb-3">
+                                <label class="form-label small fw-bold text-uppercase text-muted">Change Status To</label>
+                                <select name="status" class="form-select mb-2">
+                                    @php
+                                        $statuses = ['submitted', 'approved', 'visa_processing', 'visa_submitted', 'visa_granted', 'travel_booking', 'travel_booked', 'rejected', 'visa_rejected'];
+                                    @endphp
+                                    <option value="">-- Select Status --</option>
+                                    @foreach($statuses as $status)
+                                        <option value="{{ $status }}" {{ $application->status == $status ? 'selected' : '' }}>
+                                            {{ ucwords(str_replace('_', ' ', $status)) }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label small fw-bold text-uppercase text-muted">Notes / Reason (Optional)</label>
+                                <textarea name="reason" class="form-control" rows="2" placeholder="Admin adjustment notes..."></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-danger w-100 fw-bold">
+                                Force Update Status
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            @endif
+
+
             {{-- 🎓 ADVISOR ACTIONS --}}
             @if(Auth::user()->user_type == 'academic_advisor' && $application->status == 'submitted')
                 <div class="card border-0 shadow-sm mb-4 border-top border-4 border-info">
@@ -362,9 +402,9 @@
                                 <div class="alert alert-info bg-info-subtle border-0 text-info mb-3">
                                     <h6 class="fw-bold mb-1"><i class="ri-user-voice-line me-1"></i> Student Requested:</h6>
                                     <ul class="mb-0 ps-3 small">
-                                        <li><strong>Date:</strong> {{ $prefs['date'] ?? 'Any' }}</li>
-                                        <li><strong>City:</strong> {{ $prefs['city'] ?? 'Any' }}</li>
-                                        <li><strong>Airline:</strong> {{ $prefs['airline'] ?? 'Any' }}</li>
+                                        <li><strong>Preferred Date:</strong> {{ $prefs['date'] ?? 'N/A' }}</li>
+                                        <li><strong>From:</strong> {{ $prefs['city'] ?? 'N/A' }}</li>
+                                        <li><strong>Airline:</strong> {{ !empty($prefs['airline']) ? $prefs['airline'] : 'Any Airline' }}</li>
                                         <li><strong>Notes:</strong> {{ $prefs['notes'] ?? 'None' }}</li>
                                     </ul>
                                 </div>
