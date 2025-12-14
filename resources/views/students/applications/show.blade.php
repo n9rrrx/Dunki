@@ -132,10 +132,19 @@
                                         <label class="form-label small fw-bold text-uppercase">Departure City</label>
                                         <input type="text" name="departure_city" class="form-control" placeholder="e.g. Lahore" required>
                                     </div>
+
+                                    {{-- 🛑 FIX: ADDED DEDICATED AIRLINE INPUT --}}
                                     <div class="col-12">
-                                        <label class="form-label small fw-bold text-uppercase">Airline / Special Requests</label>
-                                        <textarea name="notes" class="form-control" rows="2" placeholder="e.g. Prefer Emirates, Vegetarian Meal..."></textarea>
+                                        <label class="form-label small fw-bold text-uppercase">Preferred Airline (Optional)</label>
+                                        <input type="text" name="airline_preference" class="form-control" placeholder="e.g. Emirates, Qatar Airways">
                                     </div>
+
+                                    {{-- 🛑 FIX: SEPARATED NOTES FIELD --}}
+                                    <div class="col-12">
+                                        <label class="form-label small fw-bold text-uppercase">Special Requests / Notes</label>
+                                        <textarea name="notes" class="form-control" rows="2" placeholder="e.g. Vegetarian Meal, Extra Luggage..."></textarea>
+                                    </div>
+
                                     <div class="col-12">
                                         <button type="submit" class="btn btn-purple text-white w-100" style="background-color: #6f42c1;">
                                             <i class="ri-send-plane-fill me-1"></i> Submit to Travel Agent
@@ -404,6 +413,7 @@
                                     <ul class="mb-0 ps-3 small">
                                         <li><strong>Preferred Date:</strong> {{ $prefs['date'] ?? 'N/A' }}</li>
                                         <li><strong>From:</strong> {{ $prefs['city'] ?? 'N/A' }}</li>
+                                        {{-- 🛑 FIX: Ensure airline preference is not an empty string --}}
                                         <li><strong>Airline:</strong> {{ !empty($prefs['airline']) ? $prefs['airline'] : 'Any Airline' }}</li>
                                         <li><strong>Notes:</strong> {{ $prefs['notes'] ?? 'None' }}</li>
                                     </ul>
