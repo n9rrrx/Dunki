@@ -5,10 +5,12 @@ namespace App\Http\Controllers;
 use App\Models\Application;
 use App\Models\University;
 use App\Models\ClientProfile;
-use App\Models\Task; // Task model must be imported
+use App\Models\Task;
+use App\Models\File;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\DB; // 🛑 CRITICAL: Import DB Facade
 use App\Mail\ApplicationStatusUpdate;
 use Illuminate\Support\Str;
 
@@ -25,7 +27,6 @@ class ApplicationController extends Controller
         }
         elseif (in_array($user->user_type, ['academic_advisor', 'admin', 'visa_consultant', 'travel_agent'])) {
 
-            // ✅ FIX: Correct Eager Loading using dot notation for staff relations
             $applicationsQuery = Application::whereHas('clientProfile', function ($query) use ($user) {
                 if ($user->user_type === 'academic_advisor') $query->where('advisor_id', $user->id);
                 if ($user->user_type === 'visa_consultant') $query->where('visa_consultant_id', $user->id);
@@ -41,7 +42,6 @@ class ApplicationController extends Controller
                 ->latest()
                 ->paginate(15);
 
-            // Admin Override (Sees EVERYTHING)
             if ($user->user_type === 'admin') {
                 $applications = Application::with([
                     'clientProfile.user',
@@ -98,23 +98,39 @@ class ApplicationController extends Controller
     public function updateStatus(Request $request, Application $application)
     {
         $user = Auth::user();
+        $newStatus = $request->status;
+
         if (!in_array($user->user_type, ['academic_advisor', 'admin', 'visa_consultant', 'travel_agent'])) abort(403);
 
         $request->validate(['status' => 'required', 'reason' => 'nullable|max:500']);
 
+        // 🛑 PREFERENCE & FILE CLEARING LOGIC 🛑
+        $statusesRequiringClearance = ['submitted', 'approved', 'visa_processing', 'visa_submitted', 'visa_granted'];
+
+        if (in_array($newStatus, $statusesRequiringClearance)) {
+            // 1. Clear the travel preference form data
+            $application->travel_preferences = null;
+
+            // 2. Clear associated travel documents from the files table
+            // ✅ CRITICAL FIX: Use DB Facade to ensure deletion is executed
+            DB::table('files')
+                ->where('application_id', $application->id)
+                ->whereIn('file_type', ['flight_ticket', 'hotel_voucher', 'travel_insurance'])
+                ->delete();
+        }
+
         $application->update([
-            'status' => $request->status,
+            'status' => $newStatus,
             'notes'  => $request->reason,
         ]);
 
-        // 🛑 CRITICAL FIX: Generate Task on Visa Grant
-        if ($request->status === 'visa_granted') {
+
+        // 🛑 TASK CREATION LOGIC
+        if ($newStatus === 'visa_granted') {
             $travelAgentId = $application->clientProfile->travel_agent_id;
 
-            // Only create task if an agent is assigned
             if ($travelAgentId) {
-
-                // ✅ FIX: Check if a PENDING task already exists to prevent duplication on status reset
+                // Check if a PENDING task already exists to prevent duplication on status reset
                 $existingTask = Task::where('related_application_id', $application->id)
                     ->where('assigned_to', $travelAgentId)
                     ->where('status', '!=', 'completed')
@@ -132,10 +148,10 @@ class ApplicationController extends Controller
                 }
             }
         }
-        // END CRITICAL FIX 🛑
+        // END TASK CREATION LOGIC 🛑
 
         try {
-            Mail::to($application->clientProfile->user->email)->send(new ApplicationStatusUpdate($application, $request->status));
+            Mail::to($application->clientProfile->user->email)->send(new ApplicationStatusUpdate($application, $newStatus));
         } catch (\Exception $e) {}
 
         if ($user->user_type === 'academic_advisor') return redirect()->route('academic.dashboard')->with('success', 'Processed!');
