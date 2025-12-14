@@ -29,7 +29,7 @@
             <!-- Left Banner -->
             <div class="col-lg-6 auth-banners">
                 <div class="bg-login card card-body m-0 h-100 border-0">
-                    <img src="{{ asset('assets/images/auth/IMG-20250927-WA0004.jpg') }}" class="img-fluid auth-banner" alt="Dunki">
+                    <img src="{{ asset('assets/images/auth/111.png') }}" class="img-fluid auth-banner" alt="Dunki">
                     <div class="auth-contain">
                         <div class="carousel slide" data-bs-ride="carousel">
                             <div class="carousel-inner">
