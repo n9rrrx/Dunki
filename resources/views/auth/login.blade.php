@@ -61,7 +61,7 @@
 
             <div class="col-lg-6 auth-banners">
                 <div class="bg-login card card-body m-0 h-100 border-0">
-                    <img src="{{ asset('assets/images/auth/IMG-20250927-WA0004.jpg') }}" class="img-fluid auth-banner" alt="Dunki - Study Abroad Journey">  <!-- Laravel asset -->
+                    <img src="{{ asset('assets/images/auth/111.png') }}" class="img-fluid auth-banner" alt="Dunki - Study Abroad Journey">  <!-- Laravel asset -->
                     <div class="auth-contain">
                         <div id="carouselExampleIndicators" class="carousel slide" data-bs-ride="carousel">
                             <div class="carousel-indicators">
@@ -168,18 +168,22 @@
                         <div class="center-hr my-10 text-nowrap text-muted">Or with email</div>  <!-- Keep social if static -->
 
                         <div class="d-flex flex-wrap align-items-center justify-content-center gap-2">
-                            <button type="button" class="btn btn-outline-facebook icon-btn">
-                                <i class="ri-facebook-fill"></i>
-                            </button>
-                            <button type="button" class="btn btn-outline-google icon-btn">
-                                <i class="ri-google-fill"></i>
-                            </button>
-                            <button type="button" class="btn btn-outline-twitter icon-btn">
-                                <i class="ri-twitter-fill"></i>
-                            </button>
-                            <button type="button" class="btn btn-outline-instagram icon-btn">
+
+                            <a href="https://www.instagram.com/n9rrrx/" target="_blank" class="btn btn-outline-instagram icon-btn" title="Instagram">
                                 <i class="ri-instagram-fill"></i>
-                            </button>
+                            </a>
+
+                            <a href="https://github.com/n9rrrx" target="_blank" class="btn btn-outline-dark icon-btn" title="GitHub">
+                                <i class="ri-github-fill"></i>
+                            </a>
+
+                            <a href="https://x.com/n9rx2102" target="_blank" class="btn btn-outline-twitter icon-btn" title="X (Twitter)">
+                                <i class="ri-twitter-fill"></i>
+                            </a>
+
+                            <a href="https://n9rrrx.github.io/Portfolio/" target="_blank" class="btn btn-outline-primary icon-btn" title="Portfolio">
+                                <i class="ri-global-line"></i>
+                            </a>
                         </div>
 
                         <p class="mb-0 mt-5 text-muted text-center">

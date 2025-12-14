@@ -10,7 +10,7 @@ use App\Models\File;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\DB; // 🛑 CRITICAL: Import DB Facade
+use Illuminate\Support\Facades\DB;
 use App\Mail\ApplicationStatusUpdate;
 use Illuminate\Support\Str;
 
