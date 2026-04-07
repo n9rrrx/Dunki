@@ -36,7 +36,7 @@ graph TD
 
 2. **Environment Configuration**:
    ```bash
-   composer install
+   composer install 
    php artisan migrate
    ```
 
