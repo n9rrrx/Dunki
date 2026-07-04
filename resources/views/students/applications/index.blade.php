@@ -7,7 +7,7 @@
         <div class="col-md-8">
             {{-- Dynamic Title --}}
             @if(Auth::user()->user_type == 'student')
-                <h4 class="fw-bold text-dark">My Applications</h4>
+                <h4 class="fw-bold text-body">My Applications</h4>
                 <p class="text-muted mb-0">Track the status of your university and visa applications.</p>
             @else
                 <h4 class="fw-bold text-dark">All Applications</h4>
